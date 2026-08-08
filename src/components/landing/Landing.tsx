@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { ZephMark } from "@/components/ui/ZephMark";
 import { SUGGESTIONS } from "@/constants/suggestions";
 import { useGreeting } from "@/hooks/useGreeting";
 
@@ -18,9 +17,6 @@ export function Landing({ onPromptSelect }: LandingProps) {
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="flex flex-col items-center text-center"
       >
-        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-white/[0.03]">
-          <ZephMark size={24} />
-        </div>
         <p className="mb-1.5 text-[13px] font-medium text-white/40">{greeting}</p>
         <h1 className="text-[26px] font-bold tracking-tight text-white/95 sm:text-[30px]">
           How can Zeph AI help you today?
