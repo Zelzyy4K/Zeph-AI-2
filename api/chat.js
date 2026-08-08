@@ -13,13 +13,17 @@ export const config = {
   runtime: "edge",
 };
 
-const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_MODEL = "gemini-3.6-flash";
 
 // Maps Zeph's model selector to a real Gemini model id.
+// NOTE: Google periodically retires older model IDs (e.g. gemini-2.5-flash
+// stopped working for new API keys in mid-2026). If you start seeing 404
+// "no longer available" errors, check https://ai.google.dev/gemini-api/docs/models
+// for current model names and update this map.
 const MODEL_MAP = {
-  "zeph-lite": "gemini-2.5-flash-lite",
-  "zeph-pro": "gemini-2.5-flash",
-  "zeph-vision": "gemini-2.5-flash", // Gemini models are natively multimodal
+  "zeph-lite": "gemini-3.5-flash-lite",
+  "zeph-pro": "gemini-3.6-flash",
+  "zeph-vision": "gemini-3.6-flash", // Gemini models are natively multimodal
 };
 
 function toGeminiContents(messages) {
