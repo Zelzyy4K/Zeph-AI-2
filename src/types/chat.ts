@@ -1,5 +1,15 @@
 export type MessageRole = "user" | "assistant";
 
+export interface MessageAttachment {
+  id: string;
+  name: string;
+  size: number;
+  isImage: boolean;
+  previewUrl?: string;
+  base64?: string;
+  mimeType?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: MessageRole;
@@ -8,6 +18,7 @@ export interface ChatMessage {
   status?: "streaming" | "complete" | "error";
   reaction?: "like" | "dislike" | null;
   bookmarked?: boolean;
+  attachments?: MessageAttachment[];
 }
 
 export interface Conversation {
