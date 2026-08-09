@@ -35,9 +35,24 @@ function toGeminiContents(messages) {
       systemInstruction = { parts: [{ text: m.content }] };
       continue;
     }
+
+    const parts = [];
+    if (m.content) parts.push({ text: m.content });
+
+    // Attach any images as inline base64 data so Gemini can actually see them.
+    if (Array.isArray(m.images)) {
+      for (const img of m.images) {
+        if (img?.base64 && img?.mimeType) {
+          parts.push({ inlineData: { mimeType: img.mimeType, data: img.base64 } });
+        }
+      }
+    }
+
+    if (parts.length === 0) continue;
+
     contents.push({
       role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content }],
+      parts,
     });
   }
 
