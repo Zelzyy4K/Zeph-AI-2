@@ -24,6 +24,11 @@ interface UiState {
   mobileSidebarOpen: boolean;
   setMobileSidebarOpen: (open: boolean) => void;
   toggleMobileSidebar: () => void;
+
+  canvasCode: string | null;
+  canvasLanguage: string | null;
+  openCanvas: (code: string, language: string) => void;
+  closeCanvas: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -37,4 +42,9 @@ export const useUiStore = create<UiState>((set) => ({
   mobileSidebarOpen: false,
   setMobileSidebarOpen: (open) => set({ mobileSidebarOpen: open }),
   toggleMobileSidebar: () => set((state) => ({ mobileSidebarOpen: !state.mobileSidebarOpen })),
+
+  canvasCode: null,
+  canvasLanguage: null,
+  openCanvas: (code, language) => set({ canvasCode: code, canvasLanguage: language }),
+  closeCanvas: () => set({ canvasCode: null, canvasLanguage: null }),
 }));
