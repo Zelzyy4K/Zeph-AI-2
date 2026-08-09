@@ -9,7 +9,7 @@ interface StreamChatParams {
 
 /**
  * Streams a chat completion from the /api/chat serverless proxy (which
- * forwards to Groq). Yields text chunks as they arrive.
+ * forwards to the configured AI provider). Yields text chunks as they arrive.
  */
 export async function* streamChatResponse({
   messages,
@@ -21,7 +21,13 @@ export async function* streamChatResponse({
 
   const payload = {
     model,
-    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    messages: messages.map((m) => ({
+      role: m.role,
+      content: m.content,
+      images: m.attachments
+        ?.filter((a) => a.isImage && a.base64 && a.mimeType)
+        .map((a) => ({ base64: a.base64, mimeType: a.mimeType })),
+    })),
   };
 
   const response = await fetch("/api/chat", {
