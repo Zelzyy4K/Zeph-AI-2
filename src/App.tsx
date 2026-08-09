@@ -16,7 +16,7 @@ import { useChatStore } from "@/store/useChatStore";
 import { useUiStore } from "@/store/useUiStore";
 import { mockStreamResponse } from "@/services/mockAi";
 import { streamChatResponse } from "@/services/groqChat";
-import type { ChatMessage, AiStatus } from "@/types/chat";
+import type { ChatMessage, AiStatus, MessageAttachment } from "@/types/chat";
 
 function genId() {
   return Math.random().toString(36).slice(2, 10);
@@ -24,6 +24,7 @@ function genId() {
 
 function App() {
   const [input, setInput] = useState("");
+  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const composerRef = useRef<ComposerHandle>(null);
   const abortRef = useRef(false);
@@ -77,7 +78,7 @@ function App() {
         }
       } catch (err) {
         // Falls back to the local mock so the UI stays usable before
-        // GROQ_API_KEY is configured, or if the request fails.
+        // GEMINI_API_KEY is configured, or if the request fails.
         console.warn("Live AI request failed, falling back to mock response:", err);
         accumulated = "";
         for await (const chunk of mockStreamResponse((status: AiStatus) => setAiStatus(status))) {
@@ -95,11 +96,11 @@ function App() {
 
   async function handleSend() {
     const text = input.trim();
-    if (!text || isGenerating) return;
+    if ((!text && attachments.length === 0) || isGenerating) return;
 
     let conversationId = activeConversationId;
     if (!conversationId) {
-      conversationId = createConversation(text);
+      conversationId = createConversation(text || attachments[0]?.name || "New chat");
     }
 
     const userMessage: ChatMessage = {
@@ -108,11 +109,21 @@ function App() {
       content: text,
       createdAt: Date.now(),
       status: "complete",
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
     addMessage(conversationId, userMessage);
     setInput("");
+    setAttachments([]);
 
     await runAssistantReply(conversationId);
+  }
+
+  function handleAddAttachments(files: MessageAttachment[]) {
+    setAttachments((prev) => [...prev, ...files]);
+  }
+
+  function handleRemoveAttachment(id: string) {
+    setAttachments((prev) => prev.filter((f) => f.id !== id));
   }
 
   function handleStop() {
@@ -187,6 +198,9 @@ function App() {
             onSend={handleSend}
             isGenerating={isGenerating}
             onStop={handleStop}
+            attachments={attachments}
+            onAddAttachments={handleAddAttachments}
+            onRemoveAttachment={handleRemoveAttachment}
           />
         </div>
       </div>
