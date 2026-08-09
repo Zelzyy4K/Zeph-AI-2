@@ -4,14 +4,7 @@ import toast from "react-hot-toast";
 import { cn } from "@/lib/cn";
 import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { ToolsPanel, type ToolsState } from "./ToolsPanel";
-
-export interface AttachedFile {
-  id: string;
-  name: string;
-  size: number;
-  isImage: boolean;
-  previewUrl?: string;
-}
+import type { MessageAttachment } from "@/types/chat";
 
 interface ComposerProps {
   value: string;
@@ -19,6 +12,9 @@ interface ComposerProps {
   onSend: () => void;
   isGenerating: boolean;
   onStop: () => void;
+  attachments: MessageAttachment[];
+  onAddAttachments: (files: MessageAttachment[]) => void;
+  onRemoveAttachment: (id: string) => void;
 }
 
 export interface ComposerHandle {
@@ -31,15 +27,35 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      resolve(result.split(",")[1] ?? "");
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Composer(
-  { value, onChange, onSend, isGenerating, onStop },
+  {
+    value,
+    onChange,
+    onSend,
+    isGenerating,
+    onStop,
+    attachments,
+    onAddAttachments,
+    onRemoveAttachment,
+  },
   ref
 ) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const [attachments, setAttachments] = useState<AttachedFile[]>([]);
   const [toolsOpen, setToolsOpen] = useState(false);
   const [tools, setTools] = useState<ToolsState>({
     webSearch: false,
@@ -62,28 +78,38 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
     el.style.height = `${Math.min(el.scrollHeight, 220)}px`;
   }, [value]);
 
+  const canSend = value.trim().length > 0 || attachments.length > 0;
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (value.trim()) onSend();
+      if (canSend) onSend();
     }
   }
 
-  function handleFiles(fileList: FileList | null, isImage: boolean) {
-    if (!fileList) return;
-    const files = Array.from(fileList).map((f) => ({
-      id: Math.random().toString(36).slice(2, 10),
-      name: f.name,
-      size: f.size,
-      isImage: isImage && f.type.startsWith("image/"),
-      previewUrl: isImage && f.type.startsWith("image/") ? URL.createObjectURL(f) : undefined,
-    }));
-    setAttachments((prev) => [...prev, ...files]);
-    toast.success(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
-  }
+  async function handleFiles(fileList: FileList | null, isImage: boolean) {
+    if (!fileList || fileList.length === 0) return;
 
-  function removeAttachment(id: string) {
-    setAttachments((prev) => prev.filter((f) => f.id !== id));
+    const files: MessageAttachment[] = await Promise.all(
+      Array.from(fileList).map(async (f) => {
+        const isActuallyImage = isImage && f.type.startsWith("image/");
+        const base = {
+          id: Math.random().toString(36).slice(2, 10),
+          name: f.name,
+          size: f.size,
+          isImage: isActuallyImage,
+          previewUrl: isActuallyImage ? URL.createObjectURL(f) : undefined,
+        };
+
+        if (!isActuallyImage) return base;
+
+        const base64 = await fileToBase64(f);
+        return { ...base, base64, mimeType: f.type };
+      })
+    );
+
+    onAddAttachments(files);
+    toast.success(`${files.length} file${files.length > 1 ? "s" : ""} attached`);
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -94,7 +120,9 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
   function toggleTool(key: keyof ToolsState) {
     setTools((prev) => {
       const next = { ...prev, [key]: !prev[key] };
-      toast.success(`${key === "webSearch" ? "Web search" : key === "imageGen" ? "Image generation" : "Code interpreter"} ${next[key] ? "enabled" : "disabled"}`);
+      toast.success(
+        `${key === "webSearch" ? "Web search" : key === "imageGen" ? "Image generation" : "Code interpreter"} ${next[key] ? "enabled" : "disabled"}`
+      );
       return next;
     });
   }
@@ -127,7 +155,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         type="file"
         multiple
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files, false)}
+        onChange={(e) => {
+          handleFiles(e.target.files, false);
+          e.target.value = "";
+        }}
       />
       <input
         ref={imageInputRef}
@@ -135,7 +166,10 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
         accept="image/*"
         multiple
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files, true)}
+        onChange={(e) => {
+          handleFiles(e.target.files, true);
+          e.target.value = "";
+        }}
       />
 
       <div className="glass-strong rounded-2xl p-2 shadow-2xl">
@@ -158,7 +192,7 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
                   <p className="text-[10px] text-white/35">{formatSize(f.size)}</p>
                 </div>
                 <button
-                  onClick={() => removeAttachment(f.id)}
+                  onClick={() => onRemoveAttachment(f.id)}
                   className="focus-ring flex h-4 w-4 items-center justify-center rounded-full bg-white/10 text-white/60 hover:bg-white/20 hover:text-white transition-colors"
                   aria-label={`Remove ${f.name}`}
                 >
@@ -221,11 +255,11 @@ export const Composer = forwardRef<ComposerHandle, ComposerProps>(function Compo
               </button>
             ) : (
               <button
-                onClick={() => value.trim() && onSend()}
-                disabled={!value.trim()}
+                onClick={() => canSend && onSend()}
+                disabled={!canSend}
                 className={cn(
                   "focus-ring flex h-8 w-8 items-center justify-center rounded-full transition-all",
-                  value.trim()
+                  canSend
                     ? "bg-white text-[#0a0a0a] hover:scale-105"
                     : "bg-white/10 text-white/25"
                 )}
