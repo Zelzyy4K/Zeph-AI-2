@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { Header } from "@/components/header/Header";
@@ -12,6 +13,7 @@ import { SettingsModal } from "@/components/modals/SettingsModal";
 import { HelpModal } from "@/components/modals/HelpModal";
 import { FavoritesModal, ArchiveModal } from "@/components/modals/FavoritesArchiveModals";
 import { FoldersModal, SharedModal, PluginsModal } from "@/components/modals/EmptyStateModals";
+import { CanvasPanel } from "@/components/canvas/CanvasPanel";
 import { useChatStore } from "@/store/useChatStore";
 import { useUiStore } from "@/store/useUiStore";
 import { mockStreamResponse } from "@/services/mockAi";
@@ -41,6 +43,9 @@ function App() {
 
   const openModal = useUiStore((s) => s.openModal);
   const closeModal = useUiStore((s) => s.closeModal);
+  const canvasCode = useUiStore((s) => s.canvasCode);
+  const canvasLanguage = useUiStore((s) => s.canvasLanguage);
+  const closeCanvas = useUiStore((s) => s.closeCanvas);
 
   function handlePromptSelect(prompt: string) {
     setInput(prompt);
@@ -77,8 +82,6 @@ function App() {
           updateMessage(conversationId, assistantId, { content: accumulated });
         }
       } catch (err) {
-        // Falls back to the local mock so the UI stays usable before
-        // GEMINI_API_KEY is configured, or if the request fails.
         console.warn("Live AI request failed, falling back to mock response:", err);
         accumulated = "";
         for await (const chunk of mockStreamResponse((status: AiStatus) => setAiStatus(status))) {
@@ -141,7 +144,6 @@ function App() {
 
   function handleRetry(messageId: string) {
     if (!activeConversationId || !activeConversation) return;
-    // Remove this assistant message and everything after it, then regenerate
     const index = activeConversation.messages.findIndex((m) => m.id === messageId);
     if (index === -1) return;
     const keep = activeConversation.messages.slice(0, index);
@@ -203,6 +205,12 @@ function App() {
             onRemoveAttachment={handleRemoveAttachment}
           />
         </div>
+
+        <AnimatePresence>
+          {canvasCode !== null && canvasLanguage !== null && (
+            <CanvasPanel code={canvasCode} language={canvasLanguage} onClose={closeCanvas} />
+          )}
+        </AnimatePresence>
       </div>
 
       <SearchModal open={openModal === "search"} onClose={closeModal} />
