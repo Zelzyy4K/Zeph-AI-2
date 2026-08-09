@@ -12,6 +12,7 @@ import {
   ThumbsDown,
   Bookmark,
   Share2,
+  FileText,
   X as XIcon,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
@@ -109,7 +110,33 @@ export function MessageBubble({ message, onEdit, onRetry, onReact, onBookmark }:
             )}
           >
             {isUser ? (
-              <p className="whitespace-pre-wrap">{message.content}</p>
+              <>
+                {message.attachments && message.attachments.length > 0 && (
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    {message.attachments.map((a) =>
+                      a.isImage && a.previewUrl ? (
+                        <img
+                          key={a.id}
+                          src={a.previewUrl}
+                          alt={a.name}
+                          className="h-24 w-24 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div
+                          key={a.id}
+                          className="flex items-center gap-2 rounded-lg bg-black/[0.06] px-2.5 py-1.5"
+                        >
+                          <FileText size={14} />
+                          <span className="max-w-[140px] truncate text-[12px] font-medium">
+                            {a.name}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+                {message.content && <p className="whitespace-pre-wrap">{message.content}</p>}
+              </>
             ) : (
               <div className="prose-invert-zeph">
                 <ReactMarkdown
